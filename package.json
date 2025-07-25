@@ -1,0 +1,30 @@
+{
+    "name": "target-web-demo",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vue-tsc -b && vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "@quasar/extras": "^1.17.0",
+        "comlink": "^4.4.2",
+        "jquery.terminal": "^2.45.2",
+        "pyodide": "^0.28.0",
+        "quasar": "^2.18.1",
+        "vite-plugin-static-copy": "^3.1.1",
+        "vue": "^3.5.17"
+    },
+    "devDependencies": {
+        "@quasar/vite-plugin": "^1.9.0",
+        "@types/node": "^24.0.14",
+        "@vitejs/plugin-vue": "^6.0.0",
+        "@vue/tsconfig": "^0.7.0",
+        "sass-embedded": "^1.89.2",
+        "typescript": "~5.8.3",
+        "vite": "^7.0.5",
+        "vue-tsc": "^3.0.2"
+    }
+}

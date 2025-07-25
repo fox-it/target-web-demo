@@ -1,0 +1,17 @@
+a {
+    color: var(--q-primary);
+    text-decoration: none;
+}
+
+.content {
+    width: 100%;
+    margin: 0 auto;
+    max-width: 1080px;
+}
+
+.rounded-8 {
+    border-radius: 8px;
+}
+.rounded-10 {
+    border-radius: 10px;
+}
