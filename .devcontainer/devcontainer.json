@@ -1,0 +1,35 @@
+{
+  "name": "Node.js & TypeScript",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "runArgs": ["--network=host", "--userns=keep-id", "--pids-limit", "16384"],
+  "postCreateCommand": ".devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vue.volar",
+        "christian-kohler.path-intellisense",
+        "dbaeumer.vscode-eslint",
+        "editorconfig.editorconfig",
+        "esbenp.prettier-vscode",
+        "apollographql.vscode-apollo"
+      ],
+      "settings": {
+        "files.exclude": {
+          "**/.git": true,
+          "**/.DS_Store": true,
+          "**/Thumbs.db": true,
+          "node_modules": true,
+          ".quasar": true
+        },
+        "editor.bracketPairColorization.enabled": true,
+        "editor.guides.bracketPairs": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": ["source.fixAll.eslint"],
+        "eslint.validate": ["javascript", "javascriptreact", "typescript", "vue"]
+      }
+    }
+  }
+}
