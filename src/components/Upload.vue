@@ -50,7 +50,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div
+    <button
         id="upload"
         class="rounded-10 text-primary"
         :class="{
@@ -69,7 +69,7 @@ onUnmounted(() => {
             Drop file(s) or click here to continue
         </p>
         <p v-else>Drop here to start analyzing</p>
-    </div>
+    </button>
 </template>
 
 <style>
@@ -81,6 +81,7 @@ onUnmounted(() => {
     overflow: hidden;
     background: rgba(1, 89, 211, 0.1);
     transition: all 0.3s;
+    cursor: pointer;
 }
 
 #upload.dragging {
