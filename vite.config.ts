@@ -1,5 +1,6 @@
 import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 import vue from '@vitejs/plugin-vue'
+import vueDevTools from 'vite-plugin-vue-devtools'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 import { defineConfig } from 'vite'
@@ -42,6 +43,7 @@ export default defineConfig({
         vue({
             template: { transformAssetUrls },
         }),
+        vueDevTools(),
         quasar({
             sassVariables: fileURLToPath(new URL('./src/css/quasar-variables.sass', import.meta.url)),
         }),
