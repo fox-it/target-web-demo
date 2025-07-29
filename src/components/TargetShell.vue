@@ -67,6 +67,7 @@ watch(
     height: 40%;
     display: flex;
     flex-direction: column;
+    border-top: solid 1px #f3f4f8;
 }
 
 #shell h2 {
