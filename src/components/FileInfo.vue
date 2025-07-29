@@ -1,20 +1,16 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import type { RemoteTarget } from '../types/Remote'
+
 import api from '../worker/api'
+import { useTargetStore } from '../stores/target'
 
 interface InfoItem {
     label: string
     value: string
 }
 
-const props = defineProps<{
-    openFiles: File[]
-}>()
-
-const emit = defineEmits<{
-    changeTarget: [target: RemoteTarget | null, filename: string]
-}>()
+const targetStore = useTargetStore()
 
 const showLoading = ref(true)
 const showError = ref(false)
@@ -23,9 +19,9 @@ const target = ref<RemoteTarget | null>(null)
 const index = ref(0)
 const info = ref<InfoItem[]>([])
 
-const hasNext = computed(() => props.openFiles.length > 1 && index.value + 1 < props.openFiles.length)
-const hasPrevious = computed(() => props.openFiles.length > 1 && index.value > 0)
-const file = computed(() => props.openFiles[index.value])
+const hasNextFile = computed(() => targetStore.openFiles.length > 1 && index.value + 1 < targetStore.openFiles.length)
+const hasPrevFile = computed(() => targetStore.openFiles.length > 1 && index.value > 0)
+const file = computed(() => targetStore.openFiles[index.value])
 const path = computed(() => `/t/${file.value.name}`)
 
 const infoFields = [
@@ -63,7 +59,7 @@ async function load() {
         showLoading.value = false
 
         // Notify parent of current, after loading in data has completed
-        await nextTick(() => emit('changeTarget', target.value, file.value.name))
+        await nextTick(() => targetStore.setTarget(target.value, file.value.name))
     } catch (error) {
         console.error(error)
         showError.value = true
@@ -73,7 +69,7 @@ async function load() {
 
 async function unload() {
     await target.value?.destroy()
-    emit('changeTarget', null, '')
+    targetStore.clearTarget()
 }
 
 async function changeIndex(offset: number) {
@@ -114,17 +110,21 @@ onUnmounted(async () => {
 
 <template>
     <div id="file-info" class="rounded-10">
-        <div v-if="openFiles.length > 1" id="file-info-controls">
+        <div v-if="targetStore.openFiles.length > 1" id="file-info-controls">
             <q-icon
                 name="arrow_back_ios"
-                :class="{ inactive: !hasPrevious }"
-                @click="hasPrevious ? changeIndex(-1) : null"
+                :class="{ inactive: !hasPrevFile }"
+                @click="hasPrevFile ? changeIndex(-1) : null"
             />
-            <q-icon name="arrow_forward_ios" :class="{ inactive: !hasNext }" @click="hasNext ? changeIndex(1) : null" />
+            <q-icon
+                name="arrow_forward_ios"
+                :class="{ inactive: !hasNextFile }"
+                @click="hasNextFile ? changeIndex(1) : null"
+            />
         </div>
         <h3>
             File info
-            <span v-if="openFiles.length > 1">({{ index + 1 }}/{{ openFiles.length }})</span>
+            <span v-if="targetStore.openFiles.length > 1">({{ index + 1 }}/{{ openFiles.length }})</span>
         </h3>
         <q-banner v-if="showError" class="text-white bg-red">
             An error occurred. Please see the browser console for more details and

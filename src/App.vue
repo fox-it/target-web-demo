@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import Playground from './pages/Playground.vue'
 
-const wantFooter = ref(true)
+import { useTargetStore } from './stores/target'
+
+const targetStore = useTargetStore()
+const wantFooter = computed(() => targetStore.openFiles.length == 0)
 </script>
 
 <template>
@@ -27,7 +30,7 @@ const wantFooter = ref(true)
         </q-header>
 
         <q-page-container>
-            <playground @update-want-footer="(newWantFooter: boolean) => (wantFooter = newWantFooter)" />
+            <playground />
         </q-page-container>
 
         <q-footer class="bg-white text-dark" v-if="wantFooter">

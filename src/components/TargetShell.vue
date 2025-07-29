@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useTemplateRef, watch } from 'vue'
 import type { RemoteShell, RemoteTarget } from '../types/Remote'
+import { useTargetStore } from '../stores/target'
 
 import jQuery from 'jquery'
 import terminal from 'jquery.terminal'
@@ -10,9 +11,7 @@ import unix_formatting from 'jquery.terminal/js/unix_formatting.js'
 const $ = terminal(window, jQuery) as any
 unix_formatting(window, $)
 
-const props = defineProps<{
-    target: RemoteTarget | null
-}>()
+const targetStore = useTargetStore()
 
 let targetShell: RemoteShell | null = null
 
@@ -20,7 +19,7 @@ const shell = useTemplateRef('target-shell')
 let term: any | null = null
 
 watch(
-    () => props.target,
+    () => targetStore.target,
     async (newTarget) => {
         if (newTarget) {
             targetShell = await newTarget.cli()
@@ -42,12 +41,12 @@ watch(
                 {
                     prompt: '',
                     greetings: false,
-                },
+                }
             )
             term.set_prompt(await targetShell!.prompt)
         }
     },
-    { immediate: true },
+    { immediate: true }
 )
 </script>
 

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { PyIterator } from 'pyodide/ffi'
 import { ref, watch } from 'vue'
-import type { RemoteTarget } from '../types/Remote'
+
 import RecordTable from './RecordTable.vue'
 import TextView from './TextView.vue'
 
-const props = defineProps<{
-    target: RemoteTarget | null
-    filename: string
-}>()
+import type { RemoteTarget } from '../types/Remote'
+import { useTargetStore } from '../stores/target'
+
+const targetStore = useTargetStore()
 
 const showLoading = ref(true)
 const showError = ref(false)
@@ -26,9 +26,11 @@ const outputOptions = [
 const outputSelect = ref(outputOptions[0].value)
 
 async function getGenerator() {
-    if (!selectedFunction.value) return
+    if (!selectedFunction.value) {
+        return
+    }
 
-    const result = await props.target?.execute(selectedFunction.value, outputSelect.value)
+    const result = await targetStore.target?.execute(selectedFunction.value, outputSelect.value)
 
     if (generator.value) {
         generator.value.destroy()
@@ -37,32 +39,35 @@ async function getGenerator() {
 }
 
 watch(
-    () => props.target,
+    () => targetStore.target,
     async (newTarget) => {
-        if (newTarget) {
-            showLoading.value = true
-            showError.value = false
-
-            availableFunctions.value = []
-            selectedFunction.value = null
-
-            generator.value = null
-
-            try {
-                availableFunctions.value = await newTarget.allRecordFunctions()
-            } catch (error) {
-                console.error(error)
-                showError.value = true
-            }
-            showLoading.value = false
+        if (!newTarget) {
+            return
         }
+
+        showLoading.value = true
+        showError.value = false
+
+        availableFunctions.value = []
+        selectedFunction.value = null
+
+        generator.value = null
+
+        try {
+            availableFunctions.value = await newTarget.allRecordFunctions()
+        } catch (error) {
+            console.error(error)
+            showError.value = true
+        }
+
+        showLoading.value = false
     },
-    { immediate: true },
+    { immediate: true }
 )
 </script>
 
 <template>
-    <div v-if="target" id="records">
+    <div v-if="targetStore.target" id="records">
         <q-banner v-if="showError" class="text-white bg-red">
             An error occurred. Please see the browser console for more details and
             <a href="https://github.com/fox-it/target-web-demo/issues/new" class="text-white">create an issue</a>
@@ -110,7 +115,7 @@ watch(
                     />
                 </q-btn-group>
             </div>
-            <h2>{{ filename }}</h2>
+            <h2>{{ targetStore.filename }}</h2>
         </div>
         <div v-if="showLoading" class="q-pa-md q-gutter-xs">
             <div class="row q-gutter-md justify-center">
