@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, watch, useTemplateRef } from 'vue'
-import { useThrottleFn } from '@vueuse/core'
 
 import FileInfo from '../components/FileInfo.vue'
 import Records from '../components/Records.vue'
@@ -47,8 +46,6 @@ function onResize(position: { top: number; left: number }) {
         shellHeight.value = `${height}px`
     })
 }
-
-const onResizeThrottled = useThrottleFn(onResize, 10)
 
 defineExpose({ browser })
 </script>
@@ -120,7 +117,7 @@ defineExpose({ browser })
                     <target-shell
                         ref="target-shell"
                         v-if="targetStore.target"
-                        @resize="onResizeThrottled"
+                        @resize="onResize"
                         :style="{ height: shellHeight }"
                     />
                 </div>
