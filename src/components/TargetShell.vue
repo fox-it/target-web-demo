@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useTemplateRef, watch } from 'vue'
+import { useTemplateRef, watch, ref } from 'vue'
 import type { RemoteShell, RemoteTarget } from '../types/Remote'
 import { useTargetStore } from '../stores/target'
 
@@ -48,10 +48,28 @@ watch(
     },
     { immediate: true }
 )
+
+const panning = ref(false)
+const panInfo = ref(null)
+
+function onPan({ evt, ...newInfo }) {
+    panInfo.value = newInfo
+
+    if (newInfo.isFirst) {
+        panning.value = true
+    } else if (newInfo.isFinal) {
+        panning.value = false
+    }
+
+    emit('resize', panInfo.value.position)
+}
+
+const emit = defineEmits(['resize'])
 </script>
 
 <template>
     <div id="shell" @click="shell?.focus()">
+        <div id="shell-resizer" v-touch-pan.vertical.prevent.mouse="onPan"></div>
         <h2>Shell</h2>
         <div class="container" ref="target-shell"></div>
         <!-- <terminal name="target-shell" ref="target-shell" :show-header="false" :enable-default-command="false" :context="ps1" context-suffix="" @exec-cmd="exec" /> -->
@@ -68,6 +86,16 @@ watch(
     display: flex;
     flex-direction: column;
     border-top: solid 1px #f3f4f8;
+}
+
+#shell-resizer {
+    cursor: ns-resize;
+    position: absolute;
+    margin-top: -5px;
+    width: 100%;
+    height: 5px;
+    padding-top: 4px;
+    padding-bottom: 4px;
 }
 
 #shell h2 {

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, useTemplateRef } from 'vue'
+import { useThrottleFn } from '@vueuse/core'
+
 import FileInfo from '../components/FileInfo.vue'
 import Records from '../components/Records.vue'
 import TargetShell from '../components/TargetShell.vue'
@@ -28,6 +30,27 @@ const broadcast = new BroadcastChannel('worker')
 broadcast.onmessage = (event) => {
     loadingMessage.value = event.data
 }
+
+const browser = useTemplateRef('browser')
+const shellHeight = ref('40%')
+let shellResizeAnimationFrameId: number | null = null
+
+function onResize(position: { top: number; left: number }) {
+    const delta = window.innerHeight - parseInt(getComputedStyle(browser.value).height.replace('px', ''))
+    const height = window.innerHeight - position.top
+
+    if (shellResizeAnimationFrameId) {
+        cancelAnimationFrame(shellResizeAnimationFrameId)
+    }
+
+    shellResizeAnimationFrameId = requestAnimationFrame(() => {
+        shellHeight.value = `${height}px`
+    })
+}
+
+const onResizeThrottled = useThrottleFn(onResize, 10)
+
+defineExpose({ browser })
 </script>
 
 <template>
@@ -64,7 +87,7 @@ broadcast.onmessage = (event) => {
                     </p>
                 </div>
             </div>
-            <div id="browser" v-else>
+            <div id="browser" ref="browser" v-else>
                 <div id="sidebar">
                     <h2>Files</h2>
                     <q-list separator id="files">
@@ -94,7 +117,12 @@ broadcast.onmessage = (event) => {
                 </div>
                 <div id="main">
                     <records v-if="targetStore.target" />
-                    <target-shell v-if="targetStore.target" />
+                    <target-shell
+                        ref="target-shell"
+                        v-if="targetStore.target"
+                        @resize="onResizeThrottled"
+                        :style="{ height: shellHeight }"
+                    />
                 </div>
             </div>
         </div>
