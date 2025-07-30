@@ -147,6 +147,7 @@ watch(
 }
 
 #records h2 {
+    margin: 8px 0;
     font-size: 16px;
     line-height: 50px;
     overflow: hidden;
