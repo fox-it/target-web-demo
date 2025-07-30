@@ -118,7 +118,9 @@ defineExpose({ browser })
                                     "
                                 />
                             </q-item-section>
-                            <q-item-section>{{ file.name }}</q-item-section>
+                            <q-item-section>
+                                <code>{{ file.name }}</code>
+                            </q-item-section>
                             <q-item-section side>
                                 <q-btn flat round icon="delete" @click.stop="targetStore.removeFile(file)" />
                             </q-item-section>

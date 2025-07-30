@@ -134,7 +134,10 @@ onUnmounted(async () => {
         </q-banner>
         <div v-for="item in info">
             <dt>{{ item.label }}</dt>
-            <dd>{{ item.value }}</dd>
+            <dd>
+                <code v-if="item.value">{{ item.value }}</code>
+                <code v-else class="text-muted">N/A</code>
+            </dd>
         </div>
         <div v-if="showLoading" class="q-pa-md q-gutter-xs">
             <div class="row q-gutter-md justify-center">

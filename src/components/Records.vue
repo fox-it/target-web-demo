@@ -117,7 +117,7 @@ watch(
             </div>
             <h2>
                 <q-icon name="plagiarism" size="sm" />
-                {{ targetStore.filename }}
+                <code>{{ targetStore.filename }}</code>
             </h2>
         </div>
         <div v-if="showLoading" class="q-pa-md q-gutter-xs">
