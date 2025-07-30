@@ -8,6 +8,19 @@ import terminal from 'jquery.terminal'
 import 'jquery.terminal/css/jquery.terminal.min.css'
 import unix_formatting from 'jquery.terminal/js/unix_formatting.js'
 
+interface Props {
+    collapsed?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    collapsed: false,
+})
+
+const emit = defineEmits<{
+    (e: 'resize', position: { top: number; left: number }): void
+    (e: 'toggleCollapsed'): void
+}>()
+
 const $ = terminal(window, jQuery) as any
 unix_formatting(window, $)
 
@@ -63,14 +76,21 @@ function onPan({ evt, ...newInfo }) {
 
     emit('resize', panInfo.value.position)
 }
-
-const emit = defineEmits(['resize'])
 </script>
 
 <template>
     <div id="shell" @click="shell?.focus()">
         <div id="shell-resizer" v-touch-pan.vertical.prevent.mouse="onPan"></div>
-        <h2>Shell</h2>
+        <div id="shell-header">
+            <h2>Target Shell</h2>
+            <q-btn
+                size="md"
+                flat
+                round
+                :icon="collapsed ? 'expand_less' : 'expand_more'"
+                @click="emit('toggleCollapsed')"
+            />
+        </div>
         <div class="container" ref="target-shell"></div>
         <!-- <terminal name="target-shell" ref="target-shell" :show-header="false" :enable-default-command="false" :context="ps1" context-suffix="" @exec-cmd="exec" /> -->
     </div>
@@ -98,12 +118,20 @@ const emit = defineEmits(['resize'])
     padding-bottom: 4px;
 }
 
-#shell h2 {
+#shell-header {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: row;
+
+    align-content: center;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#shell-header h2 {
     font-size: 16px;
     line-height: 50px;
-    margin: 0 20px;
-    border-bottom: solid 1px #f3f4f8;
-    flex: 0 0 auto;
+    margin: 0;
 }
 
 #shell .container {

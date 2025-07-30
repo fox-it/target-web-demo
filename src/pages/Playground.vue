@@ -11,6 +11,9 @@ import api from '../worker/api'
 
 import { useTargetStore } from '../stores/target'
 
+const MIN_SHELL_TOP = 225
+const MIN_SHELL_HEIGHT = 50
+
 const targetStore = useTargetStore()
 
 const emit = defineEmits<{
@@ -32,17 +35,25 @@ broadcast.onmessage = (event) => {
 
 const browser = useTemplateRef('browser')
 const shellHeight = ref('40%')
+const shellCollapsed = ref(false)
 let shellResizeAnimationFrameId: number | null = null
 
 function onResize(position: { top: number; left: number }) {
-    const delta = window.innerHeight - parseInt(getComputedStyle(browser.value).height.replace('px', ''))
     const height = window.innerHeight - position.top
+
+    if (position.top <= MIN_SHELL_TOP || height <= MIN_SHELL_HEIGHT) {
+        return
+    }
 
     if (shellResizeAnimationFrameId) {
         cancelAnimationFrame(shellResizeAnimationFrameId)
     }
 
     shellResizeAnimationFrameId = requestAnimationFrame(() => {
+        if (shellCollapsed.value) {
+            shellCollapsed.value = false
+        }
+
         shellHeight.value = `${height}px`
     })
 }
@@ -78,9 +89,9 @@ defineExpose({ browser })
                     </ul>
                     <p>
                         For more details please see
-                        <a href="https://dissect.readthedocs.io/en/latest/overview/index.html#targets"
-                            >the documentation on targets.</a
-                        >
+                        <a href="https://dissect.readthedocs.io/en/latest/overview/index.html#targets">
+                            the documentation on targets.
+                        </a>
                     </p>
                 </div>
             </div>
@@ -115,10 +126,13 @@ defineExpose({ browser })
                 <div id="main">
                     <records v-if="targetStore.target" />
                     <target-shell
-                        ref="target-shell"
                         v-if="targetStore.target"
+                        ref="target-shell"
                         @resize="onResize"
+                        :class="{ collapsed: shellCollapsed }"
                         :style="{ height: shellHeight }"
+                        :collapsed="shellCollapsed"
+                        @toggle-collapsed="shellCollapsed = !shellCollapsed"
                     />
                 </div>
             </div>
@@ -181,5 +195,9 @@ defineExpose({ browser })
     right: 0;
     top: 0;
     bottom: 0;
+}
+
+#shell.collapsed {
+    height: 51px !important;
 }
 </style>
