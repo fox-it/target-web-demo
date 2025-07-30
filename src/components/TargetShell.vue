@@ -122,6 +122,7 @@ function onPan({ evt, ...newInfo }) {
 }
 
 #shell-header {
+    background: white;
     padding: 0 20px;
     display: flex;
     flex-direction: row;
