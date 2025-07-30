@@ -115,7 +115,10 @@ watch(
                     />
                 </q-btn-group>
             </div>
-            <h2>{{ targetStore.filename }}</h2>
+            <h2>
+                <q-icon name="plagiarism" size="sm" />
+                {{ targetStore.filename }}
+            </h2>
         </div>
         <div v-if="showLoading" class="q-pa-md q-gutter-xs">
             <div class="row q-gutter-md justify-center">
@@ -157,6 +160,11 @@ watch(
 #records-header {
     margin: 0 20px;
     border-bottom: solid 1px #f3f4f8;
+}
+
+#records-header h2 i {
+    margin-top: -4px;
+    margin-right: 4px;
 }
 
 #records-controls {

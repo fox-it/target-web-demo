@@ -97,7 +97,10 @@ defineExpose({ browser })
             </div>
             <div id="browser" ref="browser" v-else>
                 <div id="sidebar">
-                    <h2>Files</h2>
+                    <h2>
+                        <q-icon name="source" size="sm" />
+                        Files
+                    </h2>
                     <q-list separator id="files">
                         <q-item
                             clickable
@@ -161,6 +164,11 @@ defineExpose({ browser })
     width: 100%;
     height: 100%;
     position: absolute;
+}
+
+#browser h2 i {
+    margin-top: -4px;
+    margin-right: 4px;
 }
 
 #sidebar {

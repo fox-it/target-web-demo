@@ -82,7 +82,10 @@ function onPan({ evt, ...newInfo }) {
     <div id="shell" @click="shell?.focus()">
         <div id="shell-resizer" v-touch-pan.vertical.prevent.mouse="onPan"></div>
         <div id="shell-header">
-            <h2>Target Shell</h2>
+            <h2>
+                <q-icon name="terminal" size="sm" style="margin-top: -3px" />
+                Target Shell
+            </h2>
             <q-btn
                 size="md"
                 flat

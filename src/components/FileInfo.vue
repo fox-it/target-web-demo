@@ -123,6 +123,7 @@ onUnmounted(async () => {
             />
         </div>
         <h3>
+            <q-icon name="info_outline" size="sm" />
             File info
             <span v-if="targetStore.openFiles.length > 1">({{ index + 1 }}/{{ openFiles.length }})</span>
         </h3>
@@ -156,6 +157,11 @@ onUnmounted(async () => {
 
 #file-info h3 {
     margin: 0 0 10px;
+}
+
+#file-info h3 i {
+    margin-top: -4px;
+    margin-right: 4px;
 }
 
 #file-info dt {
