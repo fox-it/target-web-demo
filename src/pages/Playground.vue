@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref, useTemplateRef } from 'vue'
+import { QBtn } from 'quasar'
 
-import FileInfo from '../components/TargetInfo.vue'
+import TargetInfo from '../components/TargetInfo.vue'
 import Records from '../components/Records.vue'
 import TargetShell from '../components/TargetShell.vue'
 import Upload from '../components/Upload.vue'
 
 import api from '../worker/api'
-import { useTargetStore } from '../stores/target'
+import { useTargetStore, type TargetItem } from '../stores/target'
 
 const MIN_SHELL_TOP = 225
 const MIN_SHELL_HEIGHT = 50
@@ -27,6 +28,7 @@ broadcast.onmessage = (event) => {
     loadingMessage.value = event.data
 }
 
+const filesAdd = useTemplateRef('filesAdd')
 const browser = useTemplateRef('browser')
 const shellHeight = ref('40%')
 const shellCollapsed = ref(false)
@@ -52,6 +54,28 @@ function onShellResize(position: { top?: number | undefined; left?: number | und
     })
 }
 
+function addFiles() {
+    console.log('Adding files...')
+    if (filesAdd.value?.files) {
+        console.log('Files to add:', filesAdd.value.files)
+        targetStore.files = targetStore.files.concat(Array.from(filesAdd.value.files))
+        filesAdd.value.value = ''
+    }
+}
+
+async function onTargetClick(item: TargetItem) {
+    if (item.target) {
+        if (targetStore.currentTarget === item.target) {
+            targetStore.clearCurrentTarget()
+        } else {
+            targetStore.setCurrentTarget(item)
+        }
+    } else {
+        await targetStore.openTarget(item)
+        targetStore.setCurrentTarget(item.target)
+    }
+}
+
 defineExpose({ browser })
 </script>
 
@@ -62,10 +86,10 @@ defineExpose({ browser })
             <p class="q-py-md">{{ loadingMessage }}</p>
         </q-inner-loading>
         <div v-if="!showLoading">
-            <div class="content text-center" v-if="targetStore.allFiles.length == 0">
+            <div class="content text-center" v-if="targetStore.files.length == 0">
                 <h1>Dissect Playground</h1>
                 <p class="text-subtitle1">To start playing around you need to select your files.</p>
-                <upload v-model="targetStore.allFiles" />
+                <upload />
                 <p id="info" class="bg-dark text-white rounded-10 q-pa-sm text-left">
                     <q-icon name="info" size="sm" />
                     This demo runs completely in your browser, your data isn't uploaded anywhere.
@@ -92,35 +116,35 @@ defineExpose({ browser })
             <div id="browser" ref="browser" v-else>
                 <div id="sidebar">
                     <h2>
-                        <q-icon name="source" size="sm" />
+                        <q-icon class="title-icon" name="source" size="sm" />
                         Files
+                        <q-btn flat round icon="add" @click.stop="filesAdd?.click()">
+                            <input class="add-files" type="file" ref="filesAdd" multiple @change="addFiles" />
+                        </q-btn>
                     </h2>
                     <q-list separator id="files">
                         <q-item
                             clickable
-                            dense
                             v-ripple
-                            v-for="file in targetStore.allFiles"
-                            :class="{ selected: targetStore.openFiles.includes(file) }"
-                            @click="targetStore.openFile(file)"
+                            v-for="item in targetStore.targets"
+                            @click.stop="onTargetClick(item)"
+                            :active="item.target && item.target === targetStore.currentTarget"
                         >
-                            <q-item-section avatar side class="file-checkbox">
-                                <q-icon
-                                    size="xs"
-                                    :name="
-                                        targetStore.openFiles.includes(file) ? 'check_box' : 'check_box_outline_blank'
-                                    "
-                                />
-                            </q-item-section>
                             <q-item-section>
-                                <code>{{ file.name }}</code>
+                                <code>{{ item.file.name }}</code>
+                            </q-item-section>
+                            <q-item-section side v-if="item.loading">
+                                <q-spinner color="primary" size="sm" />
                             </q-item-section>
                             <q-item-section side>
-                                <q-btn flat round icon="delete" @click.stop="targetStore.removeFile(file)" />
+                                <q-badge color="blue" v-if="item.target !== null">opened</q-badge>
+                            </q-item-section>
+                            <q-item-section side>
+                                <q-btn flat round dense icon="close" @click.stop="targetStore.removeFile(item)" />
                             </q-item-section>
                         </q-item>
                     </q-list>
-                    <file-info v-if="targetStore.openFiles.length > 0" />
+                    <target-info v-if="targetStore.currentTarget" />
                 </div>
                 <div id="main">
                     <records v-if="targetStore.currentTarget" />
@@ -145,7 +169,7 @@ defineExpose({ browser })
     width: 380px;
     font-size: 13px;
 }
-#info .q-icon {
+#info .title-icon {
     float: left;
     margin: 8px;
 }
@@ -154,6 +178,15 @@ defineExpose({ browser })
     font-size: 12px;
     width: 380px;
     margin: 10px auto 0;
+}
+
+.add-files {
+    position: absolute;
+    left: 100%;
+    top: 100%;
+    opacity: 0;
+    width: 0;
+    height: 0;
 }
 
 #browser {

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
 
-const model = defineModel()
+import { useTargetStore } from '../stores/target'
+
+const targetStore = useTargetStore()
+
 const dragging = ref(false)
 const filesInput = useTemplateRef('filesInput')
 
@@ -19,17 +22,13 @@ function drop(e: DragEvent) {
     dragging.value = false
     const files = (e.dataTransfer as DataTransfer).files
     if (files.length > 0) {
-        model.value = Array.from(files)
+        targetStore.files = Array.from(files)
     }
-}
-
-function selectFiles() {
-    filesInput.value?.click()
 }
 
 function updateFiles() {
     if (filesInput.value?.files) {
-        model.value = Array.from(filesInput.value?.files)
+        targetStore.files = Array.from(filesInput.value.files)
     }
 }
 
@@ -58,7 +57,7 @@ onUnmounted(() => {
             'text-white': dragging,
             'bg-primary': dragging,
         }"
-        @click="selectFiles"
+        @click="filesInput?.click()"
         @dragover="dragover"
         @dragleave="dragleave"
         @drop.stop.prevent="drop"

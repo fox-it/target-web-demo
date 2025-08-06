@@ -2,7 +2,7 @@
 import { useTemplateRef, watch } from 'vue'
 import type { TouchPanValue } from 'quasar'
 
-import type { RemoteShell } from '../types/Remote'
+import type { RemoteShell } from '../types/remote'
 import { useTargetStore } from '../stores/target'
 
 import jQuery from 'jquery'
@@ -60,8 +60,7 @@ watch(
             )
             term.set_prompt(await targetShell!.prompt)
         }
-    },
-    { immediate: true }
+    }
 )
 
 const onPan: TouchPanValue = ({ position }) => {

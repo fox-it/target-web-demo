@@ -1,71 +1,105 @@
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 
-import type { RemoteTarget } from '../types/Remote'
 import api from '../worker/api'
+import type { RemoteTarget } from '../types/remote'
+
+export interface TargetItem {
+    file: File
+    target: RemoteTarget | null
+    path: string
+    loading: boolean
+}
 
 export const useTargetStore = defineStore('target', () => {
-    const allFiles = ref<File[]>([])
-    const openFiles = ref<File[]>([])
+    // All files that have been selected/"uploaded"
+    const files = ref<File[]>([])
 
-    const currentTarget = ref<RemoteTarget | null>(null)
-    const currentFilename = ref('')
+    // Wrapped files with additional state
+    const targets = ref<TargetItem[]>([])
 
-    function setTarget(newTarget: RemoteTarget | null, newFilename: string) {
-        currentTarget.value = newTarget
-        currentFilename.value = newFilename
+    // Currently active target
+    const currentItem = ref<TargetItem | null>(null)
+    const currentTarget = computed(() => currentItem.value?.target || null)
+
+    function setCurrentTarget(item: TargetItem | null) {
+        currentItem.value = item
     }
 
-    function clearTarget() {
-        setTarget(null, '')
+    function clearCurrentTarget() {
+        setCurrentTarget(null)
     }
 
-    function openFile(file: File) {
-        let idx = openFiles.value.indexOf(file)
-        if (idx == -1) {
-            openFiles.value.push(file)
-        } else {
-            openFiles.value.splice(idx, 1)
+    async function openTarget(item: TargetItem) {
+        if (item.target) return
+
+        item.loading = true
+        item.target = await api.openTarget(`/t/${item.file.name}`)
+        item.path = await item.target.path
+        item.loading = false
+
+        if (targets.value.length === 1) {
+            setCurrentTarget(item)
         }
     }
 
-    function removeFile(file: File) {
-        const fileIdx = allFiles.value.indexOf(file)
-        if (fileIdx != -1) {
-            allFiles.value.splice(fileIdx, 1)
-        }
-        const targetIdx = openFiles.value.indexOf(file)
-        if (targetIdx != -1) {
-            openFiles.value.splice(targetIdx, 1)
-        }
+    async function closeTarget(item: TargetItem) {
+        if (!item.target) return
+
+        await item.target.destroy()
+        item.target = null
+        item.loading = false
     }
 
-    watch(allFiles, (newFiles, oldFiles) => {
+    function isOpened(item: TargetItem) {
+        return item.target !== null
+    }
+
+    async function removeFile(item: TargetItem) {
+        item.loading = true
+        await closeTarget(item)
+        await api.unmapFile(item.file)
+
+        files.value = files.value.filter((f) => f !== item.file)
+    }
+
+    watch(files, async (newFiles, oldFiles) => {
+        // Update the targets list based on the files
+        targets.value = newFiles.map((file) => {
+            const existingTarget = targets.value.find((t) => t.file === file)
+            return {
+                file,
+                target: existingTarget ? existingTarget.target : null,
+                path: existingTarget ? existingTarget.path : '',
+                loading: existingTarget ? existingTarget.loading : false,
+            }
+        })
+
+        // Map new files to the worker
         for (let file of newFiles) {
-            let oldIdx = oldFiles.indexOf(file)
-            if (oldIdx === -1) api.mapFile(file)
+            if (oldFiles.indexOf(file) === -1) api.mapFile(file)
         }
+    })
 
-        for (let file of oldFiles) {
-            let newIdx = newFiles.indexOf(file)
-            if (newIdx === -1) api.unmapFile(file)
-        }
-
-        // Open the only file that was uploaded
-        if (oldFiles.length == 0 && newFiles.length == 1) {
-            openFile(newFiles[0])
+    watch(targets, async (newTargets, oldTargets) => {
+        // If we only uploaded one file, open it
+        if (oldTargets.length == 0 && newTargets.length == 1) {
+            openTarget(newTargets[0])
         }
     })
 
     return {
+        files,
+        targets,
         currentTarget,
-        currentFilename,
-        allFiles,
-        openFiles,
 
-        setTarget,
-        clearTarget,
-        openFile,
+        setCurrentTarget,
+        clearCurrentTarget,
+
+        openTarget,
+        closeTarget,
+        isOpened,
+
         removeFile,
     }
 })

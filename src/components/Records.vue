@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { PyIterator } from 'pyodide/ffi'
 import { ref, watch } from 'vue'
 
 import RecordTable from './RecordTable.vue'
 import TextView from './TextView.vue'
 
 import { useTargetStore } from '../stores/target'
+import type { RemotePyIterator } from '../types/remote'
 
 const targetStore = useTargetStore()
 
@@ -15,21 +15,21 @@ const showError = ref(false)
 const availableFunctions = ref<string[]>([])
 const selectedFunction = ref<string | null>(null)
 
-const generator = ref<PyIterator | null>(null)
+const generator = ref<RemotePyIterator<any> | null>(null)
 
 const outputOptions = [
     { label: 'Table', value: 'object' },
     { label: 'Text', value: 'text' },
     { label: 'Line', value: 'line' },
 ]
-const outputSelect = ref(outputOptions[0].value)
+const selectedOutput = ref(outputOptions[0].value)
 
 async function getGenerator() {
     if (!selectedFunction.value) {
         return
     }
 
-    const result = await targetStore.currentTarget?.execute(selectedFunction.value, outputSelect.value)
+    const result = await targetStore.currentTarget?.execute(selectedFunction.value, selectedOutput.value)
 
     if (generator.value) {
         generator.value.destroy()
@@ -105,18 +105,18 @@ watch(
                         :label="option.label"
                         @click="
                             () => {
-                                outputSelect = option.value
+                                selectedOutput = option.value
                                 getGenerator()
                             }
                         "
                         no-caps
-                        :class="{ active: outputSelect == option.value }"
+                        :class="{ active: selectedOutput == option.value }"
                     />
                 </q-btn-group>
             </div>
             <h2>
                 <q-icon name="plagiarism" size="sm" />
-                <code>{{ targetStore.currentFilename }}</code>
+                Records
             </h2>
         </div>
         <div v-if="showLoading" class="q-pa-md q-gutter-xs">
@@ -125,11 +125,11 @@ watch(
             </div>
         </div>
         <div v-else-if="selectedFunction" id="records-content">
-            <div v-if="outputSelect === 'object'">
-                <record-table :generator="generator" />
+            <div v-if="selectedOutput === 'object'">
+                <record-table :function="selectedFunction" />
             </div>
             <div v-else>
-                <text-view :generator="generator" />
+                <text-view :function="selectedFunction" :output="selectedOutput" />
             </div>
         </div>
         <div v-else class="text-center" style="line-height: 100px">

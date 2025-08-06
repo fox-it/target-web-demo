@@ -5,7 +5,7 @@ import Playground from './pages/Playground.vue'
 import { useTargetStore } from './stores/target'
 
 const targetStore = useTargetStore()
-const wantFooter = computed(() => targetStore.openFiles.length == 0)
+const wantFooter = computed(() => targetStore.targets.length == 0)
 </script>
 
 <template>

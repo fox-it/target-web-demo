@@ -1,10 +1,9 @@
 /// <reference lib="webworker" />
 console.log('Worker started')
 import * as Comlink from 'comlink'
-import type { PyodideInterface } from 'pyodide'
-import { loadPyodide } from 'pyodide'
+import { loadPyodide, type PyodideAPI } from 'pyodide'
 import type { PyCallable, PyProxy } from 'pyodide/ffi'
-import { pyIteratorHandler } from './transferHandlers'
+import { pyIteratorHandler, targetHandler, targetMarker } from './transferHandlers'
 
 // I suck at JavaScript/TypeScript, so just run most of the code in Python
 const PLUGIN_FINDER_CODE = `
@@ -34,7 +33,7 @@ def _record_functions(p):
 def find_plugins(target):
     result = _record_functions(target._os_plugin)
     for desc in plugin.find_functions("*", target=target, compatibility=True, ignore_load_errors=True)[0]:
-        if desc.output == "record":
+        if desc.output == "record" and not any(kwargs.get("required", False) for _, kwargs in desc.args):
             result.add(desc.name)
 
     return to_js(sorted(list(result)))
@@ -143,6 +142,8 @@ def execute(target, func, format="object"):
             continue
 
         if output == "default":
+            if isinstance(value, datetime):
+                value = str(value)
             value = to_js(value)
         elif output == "record":
             if format == "object":
@@ -278,7 +279,7 @@ export class Target {
 
     constructor(target: PyProxy) {
         this.target = target
-        this.path = target.path
+        this.path = target.path.toString()
     }
 
     static open(path: string) {
@@ -313,7 +314,7 @@ export class Target {
     }
 }
 
-let py: PyodideInterface
+let py: PyodideAPI
 let FS: any
 let pluginFinder: PyCallable
 let pluginExecutor: PyCallable
@@ -334,7 +335,7 @@ export class Api {
                 FS.mkdir('/t/')
             },
         })
-            .then(async (pyodide: PyodideInterface) => {
+            .then(async (pyodide: PyodideAPI) => {
                 py = pyodide
 
                 broadcast.postMessage('Loading packages...')

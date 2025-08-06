@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import type { PyIterable } from 'pyodide/ffi'
 import { computed, nextTick, ref, watch } from 'vue'
+
+import { useTargetStore } from '../stores/target'
+import type { RemotePyIterator } from '../types/remote'
 
 interface Cell {
     name: string
@@ -15,9 +17,13 @@ interface Record {
     _data: [string, RecordValue][]
 }
 
+const targetStore = useTargetStore()
+
 const props = defineProps<{
-    generator: PyIterable | null
+    function: string
 }>()
+
+let generator: RemotePyIterator<Record> | null = null
 
 const showLoading = ref(true)
 const showError = ref(false)
@@ -31,14 +37,14 @@ const rows = computed(() => allRows.slice(0, pageSize * pageIndex.value))
 const columns = ref<Cell[]>([])
 
 async function loadNextRecords(count: number) {
-    if (!props.generator || showLoading.value || reachedEnd) return
+    if (!generator || showLoading.value || reachedEnd) return
 
     showLoading.value = true
 
     let newRecords = []
     let columnKeys = new Set(columns.value.map((col) => col.field))
 
-    for await (let record of props.generator || []) {
+    for await (let record of generator || []) {
         if (record['_type'] == 'recorddescriptor') {
             record['_data'][1]
                 .filter((item: any) => !columnKeys.has(item[1]))
@@ -68,7 +74,7 @@ async function loadNextRecords(count: number) {
 async function onScroll({ to, ref }: any) {
     const lastIndex = rows.value.length - 1
 
-    if (props.generator && !showLoading.value && !reachedEnd && to === lastIndex) {
+    if (generator && !showLoading.value && !reachedEnd && to === lastIndex) {
         pageIndex.value += 1
 
         await loadNextRecords(50)
@@ -79,26 +85,34 @@ async function onScroll({ to, ref }: any) {
 }
 
 watch(
-    () => props.generator,
-    async (newGenerator) => {
-        if (newGenerator) {
-            reachedEnd = false
-            showLoading.value = false
-            showError.value = false
-            allRows = []
-            columns.value = []
-            pageIndex.value = 0
+    () => props.function,
+    async (newFunction, oldFunction) => {
+        if (!newFunction || (oldFunction === undefined && generator)) {
+            // Nothing actually changed
+            return
+        }
 
-            try {
-                await loadNextRecords(50)
-                pageIndex.value = 1
-            } catch (error) {
-                console.error(error)
-                showError.value = true
-            }
+        if (generator) {
+            await generator.destroy()
+        }
+        generator = await targetStore.currentTarget?.execute(props.function, 'object')
+
+        reachedEnd = false
+        showLoading.value = false
+        showError.value = false
+        allRows = []
+        columns.value = []
+        pageIndex.value = 0
+
+        try {
+            await loadNextRecords(50)
+            pageIndex.value = 1
+        } catch (error) {
+            console.error(error)
+            showError.value = true
         }
     },
-    { immediate: true },
+    { immediate: true }
 )
 </script>
 

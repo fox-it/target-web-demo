@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
-import type { RemoteTarget } from '../types/Remote'
+import { onMounted, ref } from 'vue'
 
-import api from '../worker/api'
 import { useTargetStore } from '../stores/target'
 
 interface InfoItem {
@@ -15,14 +13,7 @@ const targetStore = useTargetStore()
 const showLoading = ref(true)
 const showError = ref(false)
 
-const target = ref<RemoteTarget | null>(null)
-const index = ref(0)
 const info = ref<InfoItem[]>([])
-
-const hasNextFile = computed(() => targetStore.openFiles.length > 1 && index.value + 1 < targetStore.openFiles.length)
-const hasPrevFile = computed(() => targetStore.openFiles.length > 1 && index.value > 0)
-const file = computed(() => targetStore.openFiles[index.value])
-const path = computed(() => `/t/${file.value.name}`)
 
 const infoFields = [
     {
@@ -38,94 +29,77 @@ const infoFields = [
         function: 'ips',
     },
     {
+        label: 'OS family',
+        function: 'os',
+    },
+    {
         label: 'OS version',
         function: 'version',
+    },
+    {
+        label: 'Architecture',
+        function: 'architecture',
+    },
+    {
+        label: 'Language',
+        function: 'language',
+    },
+    {
+        label: 'Timezone',
+        function: 'timezone',
+    },
+    {
+        label: 'Install date',
+        function: 'install_date',
+    },
+    {
+        label: 'Last activity',
+        function: 'activity',
     },
 ]
 
 async function load() {
+    if (!targetStore.currentTarget) return
+
     info.value = [
         {
             label: 'Path',
-            value: path.value,
+            value: await targetStore.currentTarget.path,
         },
     ]
 
-    try {
-        target.value = await api.openTarget(path.value)
-        ;(window as any).target = target.value // For debugging purposes
-
-        await loadInfo()
-        showLoading.value = false
-
-        // Notify parent of current, after loading in data has completed
-        await nextTick(() => targetStore.setTarget(target.value, file.value.name))
-    } catch (error) {
-        console.error(error)
-        showError.value = true
-        showLoading.value = false
-    }
-}
-
-async function unload() {
-    await target.value?.destroy()
-    targetStore.clearTarget()
-}
-
-async function changeIndex(offset: number) {
-    index.value += offset
-    await unload()
-    await load()
-}
-
-async function loadInfo() {
-    if (!target.value) return
+    showLoading.value = true
 
     for (let item of infoFields) {
-        let value
+        let value = null
         try {
-            value = await target.value.execute(item.function)
+            value = await targetStore.currentTarget.execute(item.function)
         } catch (error) {
             console.error(error)
             value = 'Error (see console for details)'
         }
 
-        if (typeof value !== 'undefined') {
+        if (value !== null) {
             info.value.push({
                 label: item.label,
                 value: Array.isArray(value) ? value.join(', ') : value,
             })
         }
     }
+
+    showLoading.value = false
 }
 
 onMounted(async () => {
     await load()
 })
-
-onUnmounted(async () => {
-    await unload()
-})
 </script>
 
 <template>
     <div id="file-info" class="rounded-10">
-        <div v-if="targetStore.openFiles.length > 1" id="file-info-controls">
-            <q-icon
-                name="arrow_back_ios"
-                :class="{ inactive: !hasPrevFile }"
-                @click="hasPrevFile ? changeIndex(-1) : null"
-            />
-            <q-icon
-                name="arrow_forward_ios"
-                :class="{ inactive: !hasNextFile }"
-                @click="hasNextFile ? changeIndex(1) : null"
-            />
-        </div>
         <h3>
             <q-icon name="info_outline" size="sm" />
-            File info
-            <span v-if="targetStore.openFiles.length > 1">({{ index + 1 }}/{{ targetStore.openFiles.length }})</span>
+            Target info
         </h3>
         <q-banner v-if="showError" class="text-white bg-red">
             An error occurred. Please see the browser console for more details and
@@ -156,6 +130,8 @@ onUnmounted(async () => {
     left: 10px;
     right: 10px;
     min-height: 340px;
+    max-height: 50%;
+    overflow: auto;
 }
 
 #file-info h3 {
@@ -177,16 +153,5 @@ onUnmounted(async () => {
     font-size: 12px;
     color: #2b343c;
     margin: 4px 0 16px;
-}
-
-#file-info-controls {
-    float: right;
-}
-#file-info-controls .q-icon {
-    cursor: pointer;
-}
-#file-info-controls .q-icon.inactive {
-    cursor: default;
-    color: #6b7386;
 }
 </style>

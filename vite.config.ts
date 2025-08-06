@@ -34,7 +34,7 @@ export function viteStaticCopyPyodide() {
 // https://vite.dev/config/
 export default defineConfig({
     server: {
-        host: true,
+        host: '127.0.0.1',
     },
     worker: {
         format: 'es',

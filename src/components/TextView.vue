@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import type { PyIterable } from 'pyodide/ffi'
 import { onMounted, ref, useTemplateRef, watch } from 'vue'
 import { QInfiniteScroll } from 'quasar'
 
+import { useTargetStore } from '../stores/target'
+import type { RemotePyIterator } from '../types/remote'
+
+const targetStore = useTargetStore()
+
 const props = defineProps<{
-    generator: PyIterable | null
+    function: string
+    output: string
 }>()
+
+let generator: RemotePyIterator<string> | null = null
 
 const isMounted = ref(false)
 const showError = ref(false)
@@ -14,12 +21,12 @@ const lines = ref<string[]>([])
 const infiniteScroll = useTemplateRef('infiniteScroll')
 
 async function loadNextLines(count: number) {
-    if (!props.generator || !isMounted.value) return
+    if (!generator || !isMounted.value) return
 
-    let newLines: string[] = []
+    let newLines = []
 
     try {
-        for await (let line of props.generator) {
+        for await (let line of generator) {
             newLines.push(line)
             if (--count === 0) break
         }
@@ -34,7 +41,7 @@ async function loadNextLines(count: number) {
 }
 
 async function onLoad(_: number, done: CallableFunction) {
-    if (props.generator && isMounted.value) {
+    if (generator && isMounted.value) {
         await loadNextLines(50)
     }
     done()
@@ -45,15 +52,23 @@ onMounted(() => {
 })
 
 watch(
-    () => props.generator,
-    async (newGenerator) => {
-        if (newGenerator) {
-            showError.value = false
-            lines.value = []
-            infiniteScroll.value?.reset()
-            infiniteScroll.value?.resume()
-            await loadNextLines(50)
+    () => [props.function, props.output],
+    async (newValues, oldValues) => {
+        if (!newValues || (oldValues === undefined && generator)) {
+            // Nothing actually changed
+            return
         }
+
+        if (generator) {
+            await generator.destroy()
+        }
+        generator = await targetStore.currentTarget?.execute(props.function, props.output)
+
+        showError.value = false
+        lines.value = []
+        infiniteScroll.value?.reset()
+        infiniteScroll.value?.resume()
+        await loadNextLines(50)
     },
     { immediate: true }
 )

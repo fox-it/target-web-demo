@@ -1,6 +1,6 @@
 .DELETE_ON_ERROR:
 
-PYODIDE_RELEASE := 0.28.1
+PYODIDE_RELEASE := $(shell npm pkg get dependencies.pyodide | tr -d '"')
 APP_SOURCE := $(shell find src -type f ! -path 'src/worker/*')
 
 .PHONY: all
