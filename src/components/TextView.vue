@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PyIterable } from 'pyodide/ffi'
-import { QInfiniteScroll } from 'quasar'
 import { onMounted, ref, useTemplateRef, watch } from 'vue'
+import { QInfiniteScroll } from 'quasar'
 
 const props = defineProps<{
     generator: PyIterable | null
@@ -55,7 +55,7 @@ watch(
             await loadNextLines(50)
         }
     },
-    { immediate: true },
+    { immediate: true }
 )
 </script>
 

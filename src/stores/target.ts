@@ -8,12 +8,12 @@ export const useTargetStore = defineStore('target', () => {
     const allFiles = ref<File[]>([])
     const openFiles = ref<File[]>([])
 
-    const target = ref<RemoteTarget | null>(null)
-    const filename = ref('')
+    const currentTarget = ref<RemoteTarget | null>(null)
+    const currentFilename = ref('')
 
     function setTarget(newTarget: RemoteTarget | null, newFilename: string) {
-        target.value = newTarget
-        filename.value = newFilename
+        currentTarget.value = newTarget
+        currentFilename.value = newFilename
     }
 
     function clearTarget() {
@@ -58,8 +58,8 @@ export const useTargetStore = defineStore('target', () => {
     })
 
     return {
-        target,
-        filename,
+        currentTarget,
+        currentFilename,
         allFiles,
         openFiles,
 

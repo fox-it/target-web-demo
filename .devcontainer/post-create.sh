@@ -3,4 +3,4 @@
 echo PATH=$PATH:$(npm config get prefix)/bin >> ~/.zshrc
 source ~/.zshrc
 
-yarn
+make install

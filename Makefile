@@ -1,6 +1,6 @@
 .DELETE_ON_ERROR:
 
-PYODIDE_RELEASE := 0.28.0
+PYODIDE_RELEASE := 0.28.1
 APP_SOURCE := $(shell find src -type f ! -path 'src/worker/*')
 
 .PHONY: all
@@ -8,6 +8,9 @@ all: build
 
 .PHONY: build
 build: dist/index.html
+
+.PHONY: install
+install: node_modules/pyodide/whl
 
 .PHONY: dev
 dev: node_modules/pyodide/whl

@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, useTemplateRef } from 'vue'
+import { ref, useTemplateRef } from 'vue'
 
-import FileInfo from '../components/FileInfo.vue'
+import FileInfo from '../components/TargetInfo.vue'
 import Records from '../components/Records.vue'
 import TargetShell from '../components/TargetShell.vue'
 import Upload from '../components/Upload.vue'
-import { type RemoteTarget } from '../types/Remote'
 
 import api from '../worker/api'
-
 import { useTargetStore } from '../stores/target'
 
 const MIN_SHELL_TOP = 225
@@ -16,16 +14,12 @@ const MIN_SHELL_HEIGHT = 50
 
 const targetStore = useTargetStore()
 
-const emit = defineEmits<{
-    (e: 'updateWantFooter', newWantFooter: boolean): void
-}>()
-
 const showLoading = ref(true)
 const loadingMessage = ref('Loading, please wait...')
 
 api.load().then(() => {
     showLoading.value = false
-    ;(window as any).api = api
+    ;(window as any).api = api // For debugging purposes
 })
 
 const broadcast = new BroadcastChannel('worker')
@@ -38,10 +32,10 @@ const shellHeight = ref('40%')
 const shellCollapsed = ref(false)
 let shellResizeAnimationFrameId: number | null = null
 
-function onResize(position: { top: number; left: number }) {
-    const height = window.innerHeight - position.top
+function onShellResize(position: { top?: number | undefined; left?: number | undefined } | undefined) {
+    const height = window.innerHeight - position?.top!
 
-    if (position.top <= MIN_SHELL_TOP || height <= MIN_SHELL_HEIGHT) {
+    if (position?.top! <= MIN_SHELL_TOP || height <= MIN_SHELL_HEIGHT) {
         return
     }
 
@@ -108,7 +102,7 @@ defineExpose({ browser })
                             v-ripple
                             v-for="file in targetStore.allFiles"
                             :class="{ selected: targetStore.openFiles.includes(file) }"
-                            @click="openFile(file)"
+                            @click="targetStore.openFile(file)"
                         >
                             <q-item-section avatar side class="file-checkbox">
                                 <q-icon
@@ -129,11 +123,11 @@ defineExpose({ browser })
                     <file-info v-if="targetStore.openFiles.length > 0" />
                 </div>
                 <div id="main">
-                    <records v-if="targetStore.target" />
+                    <records v-if="targetStore.currentTarget" />
                     <target-shell
-                        v-if="targetStore.target"
+                        v-if="targetStore.currentTarget"
                         ref="target-shell"
-                        @resize="onResize"
+                        @resize="onShellResize"
                         :class="{ collapsed: shellCollapsed }"
                         :style="{ height: shellHeight }"
                         :collapsed="shellCollapsed"

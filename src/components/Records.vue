@@ -5,7 +5,6 @@ import { ref, watch } from 'vue'
 import RecordTable from './RecordTable.vue'
 import TextView from './TextView.vue'
 
-import type { RemoteTarget } from '../types/Remote'
 import { useTargetStore } from '../stores/target'
 
 const targetStore = useTargetStore()
@@ -30,7 +29,7 @@ async function getGenerator() {
         return
     }
 
-    const result = await targetStore.target?.execute(selectedFunction.value, outputSelect.value)
+    const result = await targetStore.currentTarget?.execute(selectedFunction.value, outputSelect.value)
 
     if (generator.value) {
         generator.value.destroy()
@@ -39,7 +38,7 @@ async function getGenerator() {
 }
 
 watch(
-    () => targetStore.target,
+    () => targetStore.currentTarget,
     async (newTarget) => {
         if (!newTarget) {
             return
@@ -67,7 +66,7 @@ watch(
 </script>
 
 <template>
-    <div v-if="targetStore.target" id="records">
+    <div v-if="targetStore.currentTarget" id="records">
         <q-banner v-if="showError" class="text-white bg-red">
             An error occurred. Please see the browser console for more details and
             <a href="https://github.com/fox-it/target-web-demo/issues/new" class="text-white">create an issue</a>
@@ -117,7 +116,7 @@ watch(
             </div>
             <h2>
                 <q-icon name="plagiarism" size="sm" />
-                <code>{{ targetStore.filename }}</code>
+                <code>{{ targetStore.currentFilename }}</code>
             </h2>
         </div>
         <div v-if="showLoading" class="q-pa-md q-gutter-xs">

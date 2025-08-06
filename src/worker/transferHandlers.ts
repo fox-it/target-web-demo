@@ -1,17 +1,9 @@
 import * as Comlink from 'comlink'
 import type { PyIterator } from 'pyodide/ffi'
 
-const pyproxyAttrsSymbol = Symbol('pyproxy.attrs')
-
 export const pyIteratorHandler: Comlink.TransferHandler<PyIterator, MessagePort> = {
     canHandle: (obj): obj is any => {
-        return (
-            obj !== null &&
-            typeof obj === 'object' &&
-            !Array.isArray(obj) &&
-            Symbol.iterator in obj &&
-            pyproxyAttrsSymbol in obj
-        )
+        return obj !== null && typeof obj === 'object' && !Array.isArray(obj) && Symbol.iterator in obj
     },
     serialize: (obj) => {
         const { port1, port2 } = new MessageChannel()

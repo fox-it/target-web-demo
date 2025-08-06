@@ -125,7 +125,7 @@ onUnmounted(async () => {
         <h3>
             <q-icon name="info_outline" size="sm" />
             File info
-            <span v-if="targetStore.openFiles.length > 1">({{ index + 1 }}/{{ openFiles.length }})</span>
+            <span v-if="targetStore.openFiles.length > 1">({{ index + 1 }}/{{ targetStore.openFiles.length }})</span>
         </h3>
         <q-banner v-if="showError" class="text-white bg-red">
             An error occurred. Please see the browser console for more details and

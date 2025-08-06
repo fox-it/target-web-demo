@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { useTemplateRef, watch, ref } from 'vue'
-import type { RemoteShell, RemoteTarget } from '../types/Remote'
+import { useTemplateRef, watch } from 'vue'
+import type { TouchPanValue } from 'quasar'
+
+import type { RemoteShell } from '../types/Remote'
 import { useTargetStore } from '../stores/target'
 
 import jQuery from 'jquery'
@@ -17,7 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-    (e: 'resize', position: { top: number; left: number }): void
+    (e: 'resize', position: { top?: number | undefined; left?: number | undefined } | undefined): void
     (e: 'toggleCollapsed'): void
 }>()
 
@@ -32,7 +34,7 @@ const shell = useTemplateRef('target-shell')
 let term: any | null = null
 
 watch(
-    () => targetStore.target,
+    () => targetStore.currentTarget,
     async (newTarget) => {
         if (newTarget) {
             targetShell = await newTarget.cli()
@@ -62,19 +64,8 @@ watch(
     { immediate: true }
 )
 
-const panning = ref(false)
-const panInfo = ref(null)
-
-function onPan({ evt, ...newInfo }) {
-    panInfo.value = newInfo
-
-    if (newInfo.isFirst) {
-        panning.value = true
-    } else if (newInfo.isFinal) {
-        panning.value = false
-    }
-
-    emit('resize', panInfo.value.position)
+const onPan: TouchPanValue = ({ position }) => {
+    emit('resize', position)
 }
 </script>
 
@@ -90,12 +81,11 @@ function onPan({ evt, ...newInfo }) {
                 size="md"
                 flat
                 round
-                :icon="collapsed ? 'expand_less' : 'expand_more'"
+                :icon="props.collapsed ? 'expand_less' : 'expand_more'"
                 @click="emit('toggleCollapsed')"
             />
         </div>
         <div class="container" ref="target-shell"></div>
-        <!-- <terminal name="target-shell" ref="target-shell" :show-header="false" :enable-default-command="false" :context="ps1" context-suffix="" @exec-cmd="exec" /> -->
     </div>
 </template>
 
