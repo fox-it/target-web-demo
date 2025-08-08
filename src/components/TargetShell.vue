@@ -36,31 +36,45 @@ let term: any | null = null
 watch(
     () => targetStore.currentTarget,
     async (newTarget) => {
-        if (newTarget) {
-            targetShell = await newTarget.cli()
-
-            if (term) {
-                term.destroy()
-            }
-
-            term = $(shell.value).terminal(
-                async (command: string) => {
-                    term.pause()
-                    let [prompt, result] = await targetShell!.cmd(command)
-                    term.echo(new TextDecoder('utf-8').decode(result), {
-                        newline: false,
-                    })
-                    term.set_prompt(prompt)
-                    term.resume()
-                },
-                {
-                    prompt: '',
-                    greetings: false,
-                }
-            )
-            term.set_prompt(await targetShell!.prompt)
+        if (!newTarget) {
+            return
         }
-    }
+
+        targetShell = await newTarget.cli()
+        if (term) {
+            term.destroy()
+        }
+
+        const port = await targetShell.run()
+        port.onmessage = (event) => {
+            if (event.data.type === 'stdout') {
+                term.echo(event.data.data, { newline: false })
+            } else if (event.data.type === 'stderr') {
+                term.error(event.data.data)
+            } else if (event.data.type === 'prompt') {
+                term.set_prompt(event.data.data)
+                term.resume()
+            }
+        }
+
+        term = $(shell.value).terminal(
+            async (command: string) => {
+                term.pause()
+                term.set_prompt('')
+                port.postMessage({
+                    type: 'stdin',
+                    data: command,
+                })
+            },
+            {
+                prompt: '',
+                greetings: false,
+            }
+        )
+        term.pause()
+        port.start()
+    },
+    { immediate: true }
 )
 
 const onPan: TouchPanValue = ({ position }) => {
@@ -74,7 +88,7 @@ const onPan: TouchPanValue = ({ position }) => {
         <div id="shell-header">
             <h2>
                 <q-icon name="terminal" size="sm" style="margin-top: -3px" />
-                Target Shell
+                Shell
             </h2>
             <q-btn
                 size="md"

@@ -1,8 +1,8 @@
 /// <reference lib="webworker" />
-console.log('Worker started')
 import * as Comlink from 'comlink'
 import { loadPyodide, type PyodideAPI } from 'pyodide'
-import type { PyCallable, PyProxy } from 'pyodide/ffi'
+import type { PyProxy, PyCallable } from 'pyodide/ffi'
+
 import { pyIteratorHandler, targetHandler, targetMarker } from './transferHandlers'
 
 // I suck at JavaScript/TypeScript, so just run most of the code in Python
@@ -161,28 +161,96 @@ execute
 `
 
 const TARGET_SHELL_CODE = `
+import asyncio
+import cmd
 from dissect.target.tools import shell
 
 # Monkeypatch ANSI colors back to normal
 shell.ANSI_COLORS = shell.AnsiColors.as_dict()
 
-# Remove some commands which don't function properly
-VERBOTEN = ["less", "python", "registry"]
 
-class WebCli(shell.TargetCli):
-    pass
+# Provide a way to read from stdin asynchronously
+class PromptEvent:
+    def __init__(self):
+        self._event = asyncio.Event()
+        self._prompt = None
+
+    def set(self, prompt):
+        self._prompt = prompt
+        self._event.set()
+
+    async def wait(self):
+        await self._event.wait()
+        return self._prompt
+
+    def clear(self):
+        self._event.clear()
+        self._prompt = None
+
+
+_stdin_queue = asyncio.Queue()
+_stdin_event = PromptEvent()
+
+async def async_input(prompt):
+    _stdin_event.set(prompt)
+    return await _stdin_queue.get()
+
+def sendline(line):
+    _stdin_queue.put_nowait(line)
+
+
+# Monkeypatch Cmd.cmdloop to be async
+_sub_cli = []
+
+async def async_cmdloop(self, intro=None, daddy=False):
+    # This is mostly copied from Cmd.cmdloop, with some stuff we can't use removed (like readline)
+    self.preloop()
+    if intro is not None:
+        self.intro = intro
+    if self.intro:
+        self.stdout.write(str(self.intro)+"\\n")
+    stop = None
+    while not stop:
+        while daddy and _sub_cli:
+            sub_cli = _sub_cli.pop()
+            await sub_cli.async_cmdloop()
+
+        if self.cmdqueue:
+            line = self.cmdqueue.pop(0)
+        else:
+            try:
+                line = await async_input(self.prompt)
+            except EOFError:
+                line = 'EOF'
+        line = self.precmd(line)
+        stop = self.onecmd(line)
+        stop = self.postcmd(stop, line)
+    self.postloop()
+
+cmd.Cmd.async_cmdloop = async_cmdloop
+
+def run_cli(cli):
+    global _sub_cli
+    _sub_cli.append(cli)
+
+shell.run_cli = run_cli
+
+
+# Remove some commands which don't function properly
+VERBOTEN = ["less"]
 
 for cmd in VERBOTEN:
     def empty(self, *args, **kwargs):
-        print("This command is not available in the web interface")
+        print("This command is not available in the web shell")
         return False
 
-    if hasattr(WebCli, f"do_{cmd}"):
-        setattr(WebCli, f"do_{cmd}", empty)
-    if hasattr(WebCli, f"cmd_{cmd}"):
-        setattr(WebCli, f"cmd_{cmd}", empty)
+    if hasattr(shell.TargetCli, f"do_{cmd}"):
+        setattr(shell.TargetCli, f"do_{cmd}", empty)
+    if hasattr(shell.TargetCli, f"cmd_{cmd}"):
+        setattr(shell.TargetCli, f"cmd_{cmd}", empty)
 
-WebCli
+# Expose sendline
+_stdin_event, sendline
 `
 
 class MappedFile {
@@ -244,31 +312,60 @@ export class Shell {
         return this.shell.prompt
     }
 
-    public cmd(value: string) {
-        let stdout = new Uint8Array()
-        py.setStdout({
-            write: (buffer: Uint8Array) => {
-                stdout = new Uint8Array([...stdout, ...buffer])
-                return buffer.length
-            },
-        })
-        py.setStderr({
-            write: (buffer: Uint8Array) => {
-                stdout = new Uint8Array([...stdout, ...buffer])
-                return buffer.length
-            },
-        })
+    public run() {
+        const { port1, port2 } = new MessageChannel()
 
-        try {
-            this.shell.onecmd(value)
-        } catch (error) {
-            console.error(error)
+        port1.onmessage = (event) => {
+            if (event.data.type === 'stdin') {
+                targetCliSendline(event.data.data)
+            }
         }
 
+        const stdoutDecoder = new TextDecoder('utf-8')
+        py.setStdout({
+            write: (buffer: Uint8Array) => {
+                port1.postMessage({
+                    type: 'stdout',
+                    data: stdoutDecoder.decode(buffer, { stream: true }),
+                })
+                return buffer.length
+            },
+        })
+        const stderrDecoder = new TextDecoder('utf-8')
+        py.setStderr({
+            write: (buffer: Uint8Array) => {
+                port1.postMessage({
+                    type: 'stderr',
+                    data: stderrDecoder.decode(buffer, { stream: true }),
+                })
+                return buffer.length
+            },
+        })
+
+        setTimeout(async () => {
+            await py.runPythonAsync(`await cli.async_cmdloop(daddy=True)`, { locals: py.toPy({ cli: this.shell }) })
+            py.setStdout()
+            py.setStderr()
+        }, 0)
+
+        setTimeout(async () => {
+            while (true) {
+                const prompt = await targetCliStdinEvent.wait()
+                port1.postMessage({
+                    type: 'prompt',
+                    data: prompt,
+                })
+                targetCliStdinEvent.clear()
+            }
+        }, 0)
+
+        return Comlink.transfer(port2, [port2])
+    }
+
+    public destroy() {
+        this.shell.destroy()
         py.setStdout()
         py.setStderr()
-
-        return [this.shell.prompt, stdout]
     }
 }
 
@@ -319,14 +416,26 @@ let FS: any
 let pluginFinder: PyCallable
 let pluginExecutor: PyCallable
 let targetCli: PyCallable
+let targetCliStdinEvent: PyProxy
+let targetCliSendline: PyCallable
 let broadcast = new BroadcastChannel('worker')
+
+function status(message: string) {
+    console.log('Status:', message)
+    broadcast.postMessage({ type: 'status', data: message })
+}
+
+function error(message: string) {
+    console.error('Error:', message)
+    broadcast.postMessage({ type: 'error', data: message })
+}
 
 export class Api {
     private files: Map<string, MappedFile> = new Map()
     private targets: Map<string, Target> = new Map()
 
     public async load() {
-        broadcast.postMessage('Loading Pyodide...')
+        status('Loading Pyodide...')
 
         await loadPyodide({
             indexURL: '/assets',
@@ -338,12 +447,12 @@ export class Api {
             .then(async (pyodide: PyodideAPI) => {
                 py = pyodide
 
-                broadcast.postMessage('Loading packages...')
+                status('Loading packages...')
                 console.log('Loading packages')
                 await py.loadPackage('micropip')
                 const pip = py.pyimport('micropip')
 
-                broadcast.postMessage('Installing packages...')
+                status('Installing packages...')
                 console.log('Installing dissect.fve and dependencies')
                 await pip.install(['pycryptodome', 'argon2-cffi'])
                 await pip.install('dissect.fve', false, false)
@@ -352,20 +461,26 @@ export class Api {
                 await pip.add_mock_package('fusepy', '0.0.0')
                 await pip.install('dissect', { pre: true })
 
-                broadcast.postMessage('Preparing Python environment...')
+                status('Preparing Python environment...')
 
-                console.log('Preparing plugin finder and executor code')
+                console.log('Preparing plugin finder code')
                 pluginFinder = py.runPython(PLUGIN_FINDER_CODE)
+                console.log('Preparing plugin executor code')
                 pluginExecutor = py.runPython(PLUGIN_EXECUTOR_CODE)
-                targetCli = py.runPython(TARGET_SHELL_CODE)
+                console.log('Preparing shell code (haha get it)')
+                targetCli = py.pyimport('dissect.target.tools.shell').TargetCli
 
-                broadcast.postMessage('Done!')
+                const result = py.runPython(TARGET_SHELL_CODE) as [PyProxy, PyCallable]
+                targetCliStdinEvent = result[0]
+                targetCliSendline = result[1]
+
+                status('Done!')
                 console.log('Done loading pyodide and packages')
 
                 return pyodide
             })
             .catch((err: any) => {
-                broadcast.postMessage('Error loading Pyodide! Please check the console for details.')
+                error('Error loading Pyodide! Please check the console for details.')
                 console.error('Error loading pyodide:', err)
                 throw err
             })

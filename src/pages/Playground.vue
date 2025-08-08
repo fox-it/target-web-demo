@@ -16,6 +16,7 @@ const MIN_SHELL_HEIGHT = 50
 const targetStore = useTargetStore()
 
 const showLoading = ref(true)
+const showError = ref(false)
 const loadingMessage = ref('Loading, please wait...')
 
 api.load().then(() => {
@@ -25,7 +26,15 @@ api.load().then(() => {
 
 const broadcast = new BroadcastChannel('worker')
 broadcast.onmessage = (event) => {
-    loadingMessage.value = event.data
+    if (event.data.type === 'status') {
+        loadingMessage.value = event.data.data
+    } else if (event.data.type === 'error') {
+        showError.value = true
+        showLoading.value = false
+        loadingMessage.value = event.data.data
+    } else {
+        console.warn('Unknown message type:', event.data)
+    }
 }
 
 const filesAdd = useTemplateRef('filesAdd')
@@ -55,9 +64,7 @@ function onShellResize(position: { top?: number | undefined; left?: number | und
 }
 
 function addFiles() {
-    console.log('Adding files...')
     if (filesAdd.value?.files) {
-        console.log('Files to add:', filesAdd.value.files)
         targetStore.files = targetStore.files.concat(Array.from(filesAdd.value.files))
         filesAdd.value.value = ''
     }
@@ -81,11 +88,12 @@ defineExpose({ browser })
 
 <template>
     <q-page>
-        <q-inner-loading :showing="showLoading">
-            <q-spinner-gears size="50px" color="primary" />
+        <q-inner-loading :showing="showLoading || showError">
+            <q-spinner-gears size="50px" color="primary" v-if="showLoading" />
+            <q-icon name="error" size="50px" color="negative" v-if="showError" />
             <p class="q-py-md">{{ loadingMessage }}</p>
         </q-inner-loading>
-        <div v-if="!showLoading">
+        <div v-if="!showLoading && !showError">
             <div class="content text-center" v-if="targetStore.files.length == 0">
                 <h1>Dissect Playground</h1>
                 <p class="text-subtitle1">To start playing around you need to select your files.</p>
