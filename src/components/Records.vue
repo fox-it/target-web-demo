@@ -67,12 +67,11 @@ watch(
 
 <template>
     <div v-if="targetStore.currentTarget" id="records">
-        <q-banner v-if="showError" class="text-white bg-red">
-            An error occurred. Please see the browser console for more details and
-            <a href="https://github.com/fox-it/target-web-demo/issues/new" class="text-white">create an issue</a>
-            if you think this is a bug.
-        </q-banner>
         <div id="records-header">
+            <div class="header-left">
+                <q-icon name="plagiarism" size="sm" />
+                <span class="header-text">Records</span>
+            </div>
             <div id="records-controls">
                 <q-btn-dropdown
                     no-caps
@@ -114,11 +113,12 @@ watch(
                     />
                 </q-btn-group>
             </div>
-            <h2>
-                <q-icon name="plagiarism" size="sm" />
-                Records
-            </h2>
         </div>
+        <q-banner v-if="showError" class="text-white bg-red">
+            An error occurred. Please see the browser console for more details and
+            <a href="https://github.com/fox-it/target-web-demo/issues/new" class="text-white">create an issue</a>
+            if you think this is a bug.
+        </q-banner>
         <div v-if="showLoading" class="q-pa-md q-gutter-xs">
             <div class="row q-gutter-md justify-center">
                 <q-spinner color="primary" size="3em" />
@@ -138,36 +138,37 @@ watch(
     </div>
 </template>
 
-<style>
+<style scoped>
 #records {
-    display: block;
-    height: 60%;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
     width: 100%;
-    position: absolute;
-    left: 0;
-    top: 0;
-}
-
-#records h2 {
-    margin: 8px 0;
-    font-size: 16px;
-    line-height: 50px;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 #records-header {
     margin: 0 20px;
     border-bottom: solid 1px #f3f4f8;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 50px;
 }
 
-#records-header h2 i {
-    margin-top: -4px;
-    margin-right: 4px;
+.header-left {
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.header-left .q-icon {
+    margin-right: 8px;
 }
 
 #records-controls {
-    float: right;
+    display: flex;
+    align-items: center;
     white-space: nowrap;
 }
 
@@ -186,11 +187,8 @@ watch(
 }
 
 #records-content {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    top: 60px;
+    flex: 1;
+    overflow: auto;
 }
 #records-content > div {
     height: 100% !important;

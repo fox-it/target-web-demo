@@ -12,19 +12,26 @@ const wantFooter = computed(() => targetStore.targets.length == 0)
     <q-layout view="hHh lpr fFf">
         <q-header class="bg-primary text-white">
             <q-toolbar>
-                <q-toolbar-title shrink>
-                    <q-avatar size="50px">
-                        <img src="./assets/logo-dark.svg" />
-                    </q-avatar>
-                    Dissect
-                </q-toolbar-title>
-                <q-separator vertical dark inset />
+                <q-avatar size="50px">
+                    <img src="./assets/logo-dark.svg" />
+                </q-avatar>
+                <q-toolbar-title shrink>Dissect</q-toolbar-title>
+                <q-space />
                 <q-btn
                     stretch
                     flat
                     href="https://dissect.readthedocs.io/en/latest"
                     target="_blank"
+                    icon="book"
                     label="Documentation"
+                />
+                <q-btn
+                    stretch
+                    flat
+                    href="https://github.com/fox-it/dissect"
+                    target="_blank"
+                    icon="code"
+                    label="GitHub"
                 />
             </q-toolbar>
         </q-header>
@@ -55,13 +62,16 @@ const wantFooter = computed(() => targetStore.targets.length == 0)
 #footer {
     width: 100%;
     margin: 0 auto;
-    position: relative;
     height: 100px;
-}
-
-#footer > div {
-    position: absolute;
-    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    background: white;
+    z-index: 1000;
 }
 
 #footer::after {
@@ -76,13 +86,13 @@ const wantFooter = computed(() => targetStore.targets.length == 0)
 }
 
 #fox-logo {
-    left: 0;
-    padding-top: 23px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 #dissect-info {
-    padding-top: 23px;
-    left: 200px;
+    text-align: center;
 }
 
 #dissect-copyright {
@@ -91,7 +101,8 @@ const wantFooter = computed(() => targetStore.targets.length == 0)
 }
 
 #visit-fox {
-    line-height: 100px;
-    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 </style>

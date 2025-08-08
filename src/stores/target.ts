@@ -31,8 +31,6 @@ export const useTargetStore = defineStore('target', () => {
     }
 
     async function openTarget(item: TargetItem) {
-        if (item.target) return
-
         item.loading = true
         item.target = await api.openTarget(`/t/${item.file.name}`)
         item.path = await item.target.path
@@ -43,21 +41,22 @@ export const useTargetStore = defineStore('target', () => {
         }
     }
 
-    async function closeTarget(item: TargetItem) {
-        if (!item.target) return
-
-        await item.target.destroy()
-        item.target = null
-        item.loading = false
+    async function reloadTarget(item: TargetItem) {
+        await item.target?.destroy()
+        await openTarget(item)
     }
 
     function isOpened(item: TargetItem) {
         return item.target !== null
     }
 
+    function isCurrentTarget(item: TargetItem) {
+        return item === currentItem.value
+    }
+
     async function removeFile(item: TargetItem) {
         item.loading = true
-        await closeTarget(item)
+        await item.target?.destroy()
         await api.unmapFile(item.file)
 
         files.value = files.value.filter((f) => f !== item.file)
@@ -91,14 +90,16 @@ export const useTargetStore = defineStore('target', () => {
     return {
         files,
         targets,
+        currentItem,
         currentTarget,
 
         setCurrentTarget,
         clearCurrentTarget,
 
         openTarget,
-        closeTarget,
+        reloadTarget,
         isOpened,
+        isCurrentTarget,
 
         removeFile,
     }

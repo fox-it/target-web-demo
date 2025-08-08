@@ -3,7 +3,7 @@ import * as Comlink from 'comlink'
 import { loadPyodide, type PyodideAPI } from 'pyodide'
 import type { PyProxy, PyCallable } from 'pyodide/ffi'
 
-import { pyIteratorHandler, targetHandler, targetMarker } from './transferHandlers'
+import { pyIteratorHandler } from './transferHandlers'
 
 // I suck at JavaScript/TypeScript, so just run most of the code in Python
 const PLUGIN_FINDER_CODE = `
@@ -331,16 +331,6 @@ export class Shell {
                 return buffer.length
             },
         })
-        const stderrDecoder = new TextDecoder('utf-8')
-        py.setStderr({
-            write: (buffer: Uint8Array) => {
-                port1.postMessage({
-                    type: 'stderr',
-                    data: stderrDecoder.decode(buffer, { stream: true }),
-                })
-                return buffer.length
-            },
-        })
 
         setTimeout(async () => {
             await py.runPythonAsync(`await cli.async_cmdloop(daddy=True)`, { locals: py.toPy({ cli: this.shell }) })
@@ -384,17 +374,8 @@ export class Target {
         return new Target(pyTarget.open(path))
     }
 
-    static *openAll(path: string) {
-        const pyTarget = py.pyimport('dissect.target.target').Target
-        for (let target of pyTarget.open_all(path)) {
-            yield new Target(target)
-        }
-    }
-
     public execute(func: string, format = 'object') {
-        console.log(`Executing function ${func} on target ${this.path} with format ${format}`)
         let result = pluginExecutor(this.target, func, format)
-        console.log(`Result of execution:`, result)
         return result
     }
 
@@ -407,6 +388,7 @@ export class Target {
     }
 
     public destroy() {
+        this.shell?.destroy()
         this.target.destroy()
     }
 }
@@ -415,6 +397,7 @@ let py: PyodideAPI
 let FS: any
 let pluginFinder: PyCallable
 let pluginExecutor: PyCallable
+let keychain: PyProxy
 let targetCli: PyCallable
 let targetCliStdinEvent: PyProxy
 let targetCliSendline: PyCallable
@@ -432,7 +415,6 @@ function error(message: string) {
 
 export class Api {
     private files: Map<string, MappedFile> = new Map()
-    private targets: Map<string, Target> = new Map()
 
     public async load() {
         status('Loading Pyodide...')
@@ -474,6 +456,8 @@ export class Api {
                 targetCliStdinEvent = result[0]
                 targetCliSendline = result[1]
 
+                keychain = py.pyimport('dissect.target.helpers.keychain')
+
                 status('Done!')
                 console.log('Done loading pyodide and packages')
 
@@ -503,7 +487,6 @@ export class Api {
 
     public unmapFile(file: File) {
         console.log(`Unmapping file ${file.name}`)
-
         if (this.files.has(file.name)) {
             this.files.get(file.name)?.unmap()
             this.files.delete(file.name)
@@ -521,19 +504,14 @@ export class Api {
     public openTarget(path: string) {
         console.log(`Opening target at ${path}`)
         const target = Target.open(path)
-        this.targets.set(target.path, target)
         return Comlink.proxy(target)
     }
 
-    public openAllTargets(path: string) {
-        console.log(`Opening all targets at ${path}`)
-        for (let target of Target.openAll(path)) {
-            this.targets.set(target.path, target)
+    public setKeychain(keys: string[]) {
+        keychain.KEYCHAIN = []
+        for (let key of keys) {
+            keychain.register_wildcard_value(key)
         }
-    }
-
-    public getTargets() {
-        return Array.from(this.targets).map(Comlink.proxy)
     }
 }
 

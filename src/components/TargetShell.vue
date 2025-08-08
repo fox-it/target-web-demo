@@ -86,10 +86,10 @@ const onPan: TouchPanValue = ({ position }) => {
     <div id="shell" @click="shell?.focus()">
         <div id="shell-resizer" v-touch-pan.vertical.prevent.mouse="onPan"></div>
         <div id="shell-header">
-            <h2>
-                <q-icon name="terminal" size="sm" style="margin-top: -3px" />
-                Shell
-            </h2>
+            <div class="header-left">
+                <q-icon name="terminal" size="sm" />
+                <span class="header-text">Shell</span>
+            </div>
             <q-btn
                 size="md"
                 flat
@@ -104,11 +104,7 @@ const onPan: TouchPanValue = ({ position }) => {
 
 <style scoped>
 #shell {
-    position: absolute;
-    bottom: 0;
-    left: 0;
     width: 100%;
-    height: 40%;
     display: flex;
     flex-direction: column;
     border-top: solid 1px #f3f4f8;
@@ -116,29 +112,30 @@ const onPan: TouchPanValue = ({ position }) => {
 
 #shell-resizer {
     cursor: ns-resize;
-    position: absolute;
-    margin-top: -5px;
     width: 100%;
-    height: 5px;
-    padding-top: 4px;
-    padding-bottom: 4px;
+    height: 10px;
+    margin-top: -5px;
+    z-index: 1;
 }
 
 #shell-header {
-    background: white;
-    padding: 0 20px;
+    margin: 0 20px;
+    border-bottom: solid 1px #f3f4f8;
     display: flex;
-    flex-direction: row;
-
-    align-content: center;
     align-items: center;
     justify-content: space-between;
+    height: 50px;
 }
 
-#shell-header h2 {
+.header-left {
+    display: flex;
+    align-items: center;
     font-size: 16px;
-    line-height: 50px;
-    margin: 0;
+    font-weight: bold;
+}
+
+.header-left .q-icon {
+    margin-right: 8px;
 }
 
 #shell .container {

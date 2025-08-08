@@ -6,6 +6,7 @@ import TargetInfo from '../components/TargetInfo.vue'
 import Records from '../components/Records.vue'
 import TargetShell from '../components/TargetShell.vue'
 import Upload from '../components/Upload.vue'
+import KeychainDialog from '../components/KeychainDialog.vue'
 
 import api from '../worker/api'
 import { useTargetStore, type TargetItem } from '../stores/target'
@@ -41,6 +42,7 @@ const filesAdd = useTemplateRef('filesAdd')
 const browser = useTemplateRef('browser')
 const shellHeight = ref('40%')
 const shellCollapsed = ref(false)
+const showKeychainDialog = ref(false)
 let shellResizeAnimationFrameId: number | null = null
 
 function onShellResize(position: { top?: number | undefined; left?: number | undefined } | undefined) {
@@ -123,32 +125,46 @@ defineExpose({ browser })
             </div>
             <div id="browser" ref="browser" v-else>
                 <div id="sidebar">
-                    <h2>
-                        <q-icon class="title-icon" name="source" size="sm" />
-                        Files
-                        <q-btn flat round icon="add" @click.stop="filesAdd?.click()">
-                            <input class="add-files" type="file" ref="filesAdd" multiple @change="addFiles" />
-                        </q-btn>
-                    </h2>
+                    <div id="sidebar-header">
+                        <div class="header-left">
+                            <q-icon name="source" size="sm" />
+                            <span class="header-text">Files</span>
+                        </div>
+                        <div class="header-icons">
+                            <q-btn flat round icon="add" @click.stop="filesAdd?.click()">
+                                <input class="add-files" type="file" ref="filesAdd" multiple @change="addFiles" />
+                                <q-tooltip> Add files </q-tooltip>
+                            </q-btn>
+                            <q-btn flat round icon="key" @click="showKeychainDialog = true">
+                                <q-tooltip> Manage encryption keys </q-tooltip>
+                            </q-btn>
+                        </div>
+                    </div>
                     <q-list separator id="files">
                         <q-item
                             clickable
                             v-ripple
                             v-for="item in targetStore.targets"
                             @click.stop="onTargetClick(item)"
-                            :active="item.target && item.target === targetStore.currentTarget"
+                            :active="targetStore.isCurrentTarget(item)"
+                            class="target-item"
                         >
                             <q-item-section>
                                 <code>{{ item.file.name }}</code>
                             </q-item-section>
-                            <q-item-section side v-if="item.loading">
-                                <q-spinner color="primary" size="sm" />
-                            </q-item-section>
                             <q-item-section side>
-                                <q-badge color="blue" v-if="item.target !== null">opened</q-badge>
-                            </q-item-section>
-                            <q-item-section side>
-                                <q-btn flat round dense icon="close" @click.stop="targetStore.removeFile(item)" />
+                                <div class="q-gutter">
+                                    <q-spinner color="primary" size="sm" v-if="item.loading" />
+                                    <q-btn
+                                        flat
+                                        round
+                                        dense
+                                        icon="refresh"
+                                        v-if="!item.loading && item.target !== null"
+                                        @click.stop="targetStore.reloadTarget(item)"
+                                    />
+                                    <q-btn flat round dense icon="delete" @click.stop="targetStore.removeFile(item)" />
+                                </div>
                             </q-item-section>
                         </q-item>
                     </q-list>
@@ -168,16 +184,32 @@ defineExpose({ browser })
                 </div>
             </div>
         </div>
+
+        <keychain-dialog v-model="showKeychainDialog" />
     </q-page>
 </template>
 
-<style>
+<style scoped>
+.q-page {
+    height: 100%;
+}
+
+.content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
 #info {
     margin: 10px auto 0;
     width: 380px;
     font-size: 13px;
 }
-#info .title-icon {
+#info i {
     float: left;
     margin: 8px;
 }
@@ -199,35 +231,49 @@ defineExpose({ browser })
 
 #browser {
     width: 100%;
-    height: 100%;
-    position: absolute;
+    height: calc(100vh - 50px);
+    display: flex;
+    box-sizing: border-box;
 }
 
-#browser h2 i {
-    margin-top: -4px;
-    margin-right: 4px;
+#sidebar-header {
+    margin: 0 20px;
+    border-bottom: solid 1px #f3f4f8;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 50px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.header-left .q-icon {
+    margin-right: 8px;
+}
+
+#browser h2 .header-icons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 #sidebar {
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
     width: 350px;
     border-right: solid 1px #f3f4f8;
-}
-
-#sidebar h2 {
-    margin-left: 20px;
-    margin-right: 20px;
-    border-bottom: solid 1px #f3f4f8;
-    font-size: 18px;
-    line-height: 50px;
+    display: flex;
+    flex-direction: column;
 }
 
 #files {
     margin: 0 8px;
     font-size: 13px;
+    flex: 1;
+    overflow: auto;
 }
 #files .file-checkbox {
     min-width: 0;
@@ -235,11 +281,9 @@ defineExpose({ browser })
 }
 
 #main {
-    position: absolute;
-    left: 351px;
-    right: 0;
-    top: 0;
-    bottom: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 #shell.collapsed {

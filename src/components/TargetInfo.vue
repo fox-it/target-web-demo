@@ -123,12 +123,9 @@ onMounted(async () => {
 
 <style>
 #file-info {
-    position: absolute;
-    bottom: 10px;
+    margin: 10px;
     padding: 20px 24px;
     background: #f3f4f8;
-    left: 10px;
-    right: 10px;
     min-height: 340px;
     max-height: 50%;
     overflow: auto;
