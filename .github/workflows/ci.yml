@@ -2,8 +2,10 @@ name: CI
 
 on:
   push:
+    # TODO: Remove s3-publish
     branches:
       - main
+      - s3-publish
     tags:
       - '*'
   pull_request:
