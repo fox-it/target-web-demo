@@ -112,7 +112,7 @@ watch(
             showError.value = true
         }
     },
-    { immediate: true }
+    { immediate: true },
 )
 </script>
 

@@ -69,12 +69,12 @@ watch(
             {
                 prompt: '',
                 greetings: false,
-            }
+            },
         )
         term.pause()
         port.start()
     },
-    { immediate: true }
+    { immediate: true },
 )
 
 const onPan: TouchPanValue = ({ position }) => {

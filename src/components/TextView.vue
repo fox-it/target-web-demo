@@ -70,7 +70,7 @@ watch(
         infiniteScroll.value?.resume()
         await loadNextLines(50)
     },
-    { immediate: true }
+    { immediate: true },
 )
 </script>
 

@@ -61,7 +61,7 @@ watch(
 
         showLoading.value = false
     },
-    { immediate: true }
+    { immediate: true },
 )
 </script>
 
